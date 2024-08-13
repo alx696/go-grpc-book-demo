@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+option go_package = "gs/proto/user";
+option java_package = "io.grpc.user";
+option java_outer_classname = "UserProto";
+
+package user;
+
+// 用户
+service User {
+  // 增加
+  rpc Add(Info) returns (Empty) {}
+
+  // 改删
+  rpc Change(Info) returns (Empty) {}
+
+  // 查询
+  rpc Search (SearchRequest) returns (SearchResponse) {}
+
+  // 验证
+  rpc Auth(AuthRequest) returns (AuthResponse) {}
+
+  // 退出
+  rpc Exit(Empty) returns (Empty) {}
+}
+
+message Empty {}
+
+message Info {
+  string username = 1; // 用户名:唯一
+  string state = 2; // 状态: [正常,删除]
+}
+
+message SearchRequest {
+  int32 page_start = 1; // 必须:该页开始行数, 从1开始, 必须大于等于1
+  int32 page_count = 2; // 必须:该页数量, 必须大于等于1
+  string keyword = 3; // 关键字:用户名
+  string state = 4; // 状态: [正常,删除]
+}
+
+message SearchResponse {
+  int32 count = 1;
+  repeated Info info_array = 2;
+}
+
+message AuthRequest {
+  string username = 1; // 用户名
+}
+
+message AuthResponse {
+  string token = 1;
+}
+
+// 推送主题:
+// TopicUserLogin 用户登录
+// TopicUserExit 用户退出
+message PushUserInfo {
+  string client_name = 1; // 客户端名称
+}

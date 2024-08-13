@@ -36,6 +36,8 @@ a. 演示 所有功能需求
 
 ## 数据库
 
+postgres:
+
 ```
 docker run -d --restart=always \
   --shm-size="4g" \
@@ -60,3 +62,20 @@ docker run -d --restart=always \
   -c "log_min_duration_statement=1000" \
   -c "log_line_prefix='%m [%p] [%r] '"
 ```
+
+调试工具:
+
+```
+docker run -d --restart=always \
+  -p 5433:80 \
+  -e "PGADMIN_DEFAULT_EMAIL=p@g.cn" \
+  -e "PGADMIN_DEFAULT_PASSWORD=p" \
+  --name "postgres-pgadmin" dpage/pgadmin4:latest
+```
+
+## 缓存
+
+生产环境一般使用Redis, 作演示直接使用map.
+
+> 使用map不方便, 服务一重启用户凭证就丢失了.
+
