@@ -31,13 +31,12 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func TestOut(t *testing.T) {
+func TestOut1(t *testing.T) {
 	var books []*borrow.BookInfo
 	books = append(books, &borrow.BookInfo{Code: "SN1", Count: 1})
 	result, e := gc.OutIn(mc, &borrow.OutInInfo{
-		Type:     "借出",
-		Username: "测试",
-		Books:    books,
+		Type:  "借出",
+		Books: books,
 	})
 	if e != nil {
 		t.Fatal(e)
@@ -45,14 +44,48 @@ func TestOut(t *testing.T) {
 	t.Log(result)
 }
 
-func TestIn(t *testing.T) {
+func TestOut2(t *testing.T) {
 	var books []*borrow.BookInfo
-	books = append(books, &borrow.BookInfo{Code: "SN1", Count: 2})
+	books = append(books, &borrow.BookInfo{Code: "SN2", Count: 3})
 	result, e := gc.OutIn(mc, &borrow.OutInInfo{
-		Type:     "归还",
-		Username: "测试",
-		Books:    books,
+		Type:  "借出",
+		Books: books,
 	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Log(result)
+}
+
+func TestIn1(t *testing.T) {
+	var books []*borrow.BookInfo
+	books = append(books, &borrow.BookInfo{Code: "SN1", Count: 1})
+	result, e := gc.OutIn(mc, &borrow.OutInInfo{
+		Type:  "归还",
+		Books: books,
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Log(result)
+}
+
+func TestIn2(t *testing.T) {
+	var books []*borrow.BookInfo
+	books = append(books, &borrow.BookInfo{Code: "SN2", Count: 2})
+	result, e := gc.OutIn(mc, &borrow.OutInInfo{
+		Type:  "归还",
+		Books: books,
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Log(result)
+}
+
+func TestQueryUserBorrow(t *testing.T) {
+	result, e := gc.QueryUserBorrow(mc, &borrow.Empty{})
+
 	if e != nil {
 		t.Fatal(e)
 	}

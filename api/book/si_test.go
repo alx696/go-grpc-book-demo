@@ -82,6 +82,19 @@ func TestChange1(t *testing.T) {
 
 func TestChange2(t *testing.T) {
 	result, e := gc.Change(mc, &book.Info{
+		Code:       "SN2",
+		Name:       "Golang进阶",
+		TotalCount: 3,
+		State:      "正常",
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Log(result)
+}
+
+func TestChange3(t *testing.T) {
+	result, e := gc.Change(mc, &book.Info{
 		Code:  "SN3",
 		Name:  "架构大师",
 		State: "删除",

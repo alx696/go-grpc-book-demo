@@ -11,8 +11,10 @@ service Borrow {
   // 借出归还
   rpc OutIn(OutInInfo) returns (Empty) {}
 
-  // 查询
-  rpc Search (SearchRequest) returns (SearchResponse) {}
+  // 查询用户在借
+  //
+  // 没有在借时返回编码 NotFound
+  rpc QueryUserBorrow (Empty) returns (UserBorrow) {}
 }
 
 message Empty {}
@@ -38,10 +40,3 @@ message OutInInfo {
   repeated BookInfo books = 5; // 图书信息
 }
 
-message SearchRequest {
-  string username = 1; // 用户名
-}
-
-message SearchResponse {
-  repeated BookInfo books = 1; // 图书信息(数量为在借数,图书信息为0表示没有在借)
-}

@@ -44,27 +44,6 @@ func (s *server) OutIn(ctx context.Context, in *borrow.OutInInfo) (*borrow.Empty
 	// 上下文中获取用户名
 	username := ctx.Value(toolApi.ContextKeyUserId).(string)
 
-	// // 查询用户在借
-	// userBorrowTx, userBorrowTxError := sdb.BeginTx(ctx, pgx.TxOptions{})
-	// if userBorrowTxError != nil {
-	// 	return nil, status.Errorf(codes.Internal, userBorrowTxError.Error())
-	// }
-	// defer func() {
-	// 	if userBorrowTxError != nil {
-	// 		filelog.Debug("回滚查询用户在借事务", userBorrowTxError.Error())
-	// 		userBorrowTx.Rollback(ctx)
-	// 	} else {
-	// 		filelog.Debug("提交查询用户在借事务")
-	// 		userBorrowTx.Commit(ctx)
-	// 	}
-	// }()
-	// var userBorrowJsonText string
-	// e := userBorrowTx.QueryRow(ctx, fmt.Sprintf(`select j from %s where j->>'username' = '%s' FOR UPDATE;`, toolSql.TableNameUserBorrow, username)).Scan(&userBorrowJsonText)
-	// if e != nil && e != pgx.ErrNoRows {
-	// 	userBorrowTxError = e
-	// 	return nil, status.Errorf(codes.Internal, e.Error())
-	// }
-
 	// 准备事务
 	t, e := sdb.BeginTx(ctx, pgx.TxOptions{})
 	if e != nil {
@@ -97,21 +76,26 @@ func (s *server) OutIn(ctx context.Context, in *borrow.OutInInfo) (*borrow.Empty
 			if in.GetType() == "借出" {
 				e = fmt.Errorf(`图书编码无效或库存数量不足:%s`, bookInfo.GetCode())
 			} else {
-				e = fmt.Errorf(`图书编码无效或借阅数量异常:%s`, bookInfo.GetCode())
+				e = fmt.Errorf(`图书编码无效或归还数量过多:%s`, bookInfo.GetCode())
 			}
 			return nil, status.Errorf(codes.InvalidArgument, e.Error())
 		}
 	}
 
 	// 查询用户在借
-	var diffBooks []*borrow.BookInfo
+	bookMap := make(map[string]int32)
 	var userBorrow borrow.UserBorrow
 	var userBorrowJsonText string
 	e = t.QueryRow(ctx, fmt.Sprintf(`select j from %s where j->>'username' = '%s' FOR UPDATE;`, toolSql.TableNameUserBorrow, username)).Scan(&userBorrowJsonText)
 	if e == pgx.ErrNoRows {
 		e = nil
 		if in.GetType() == "借出" {
-			diffBooks = in.GetBooks()
+			for _, bookInfo := range in.GetBooks() {
+				bookMap[bookInfo.GetCode()] = bookInfo.GetCount()
+			}
+		} else {
+			e = fmt.Errorf(`没有借出记录`)
+			return nil, status.Errorf(codes.InvalidArgument, e.Error())
 		}
 	} else if e != nil {
 		return nil, status.Errorf(codes.Internal, e.Error())
@@ -121,29 +105,51 @@ func (s *server) OutIn(ctx context.Context, in *borrow.OutInInfo) (*borrow.Empty
 			return nil, status.Errorf(codes.Internal, e.Error())
 		}
 
-		for _, bookInfoNow := range in.GetBooks() {
-			var existsCount int32
-			for _, bookInfoExists := range userBorrow.GetBooks() {
-				if bookInfoExists.GetCode() == bookInfoNow.GetCode() {
-					existsCount = bookInfoExists.GetCount()
-					continue
-				}
+		if in.GetType() == "借出" {
+			for _, bookInfo := range userBorrow.GetBooks() {
+				bookMap[bookInfo.GetCode()] = bookInfo.GetCount()
 			}
 
-			var diffCount int32
-			if in.GetType() == "借出" {
-				diffCount = bookInfoNow.GetCount() + existsCount
-			} else {
-				diffCount = existsCount - bookInfoNow.GetCount()
+			for _, bookInfo := range in.GetBooks() {
+				count, exists := bookMap[bookInfo.GetCode()]
+				if exists {
+					bookMap[bookInfo.GetCode()] = count + bookInfo.GetCount()
+				} else {
+					bookMap[bookInfo.GetCode()] = bookInfo.GetCount()
+				}
 			}
-			if diffCount > 0 {
-				diffBooks = append(diffBooks, &borrow.BookInfo{Code: bookInfoNow.GetCode(), Count: diffCount})
+		} else {
+			for _, bookInfo := range userBorrow.GetBooks() {
+				bookMap[bookInfo.GetCode()] = bookInfo.GetCount()
+			}
+
+			for _, bookInfo := range in.GetBooks() {
+				count, exists := bookMap[bookInfo.GetCode()]
+				if exists {
+					diffCount := count - bookInfo.GetCount()
+
+					if diffCount < 0 {
+						e = fmt.Errorf(`归还数量超过借阅:%s`, bookInfo.GetCode())
+						return nil, status.Errorf(codes.InvalidArgument, e.Error())
+					} else if diffCount == 0 {
+						delete(bookMap, bookInfo.GetCode())
+					} else {
+						bookMap[bookInfo.GetCode()] = diffCount
+					}
+				} else {
+					e = fmt.Errorf(`没有借阅此书:%s`, bookInfo.GetCode())
+					return nil, status.Errorf(codes.InvalidArgument, e.Error())
+				}
 			}
 		}
 	}
 	// 更新用户在借
-	if len(diffBooks) > 0 {
-		userBorrow = borrow.UserBorrow{Username: username, Books: diffBooks}
+	var books []*borrow.BookInfo
+	for code, count := range bookMap {
+		books = append(books, &borrow.BookInfo{Code: code, Count: count})
+	}
+	if len(books) > 0 {
+		userBorrow = borrow.UserBorrow{Username: username, Books: books}
 		userBorrowJsonText, _ = toolApi.ProtoToJson(&userBorrow)
 		tag, error := t.Exec(ctx, fmt.Sprintf(`insert into %s values('%s') ON CONFLICT ((j->'username')) DO UPDATE SET j = EXCLUDED.j;`, toolSql.TableNameUserBorrow, userBorrowJsonText))
 		if error != nil {
@@ -178,4 +184,24 @@ func (s *server) OutIn(ctx context.Context, in *borrow.OutInInfo) (*borrow.Empty
 	}
 
 	return &borrow.Empty{}, nil
+}
+
+func (s *server) QueryUserBorrow(ctx context.Context, in *borrow.Empty) (*borrow.UserBorrow, error) {
+	// 上下文中获取用户名
+	username := ctx.Value(toolApi.ContextKeyUserId).(string)
+
+	// 查询数据
+	var userBorrow borrow.UserBorrow
+	var userBorrowJsonText string
+	e := sdb.QueryRow(ctx, fmt.Sprintf(`select j from %s where j->>'username' = '%s'`, toolSql.TableNameUserBorrow, username)).Scan(&userBorrowJsonText)
+	if e == pgx.ErrNoRows {
+		return nil, status.Errorf(codes.NotFound, "没有在借图书")
+	} else if e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+	e = toolApi.JsonToProto(userBorrowJsonText, &userBorrow)
+	if e != nil {
+		return nil, status.Errorf(codes.Internal, e.Error())
+	}
+	return &userBorrow, nil
 }
