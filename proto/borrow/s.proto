@@ -27,7 +27,7 @@ message OutInRequest {
   string id = 1; // 由服务生成
   string date_text = 2; // 由服务生成, 日期时间, 格式 2024-08-13T14:01:02
   string type = 3; // 类型: [借出,归还]
-  string manager = 4; // 管理员
+  string manager = 4; // 由服务设置, 管理员
   string username = 5; // 用户名
   repeated BookInfo books = 6; // 图书信息
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gs/api/book"
+	"gs/api/borrow"
 	"gs/api/user"
 	"gs/filelog"
 	"net"
@@ -181,6 +182,7 @@ func Init() {
 	// 注册服务
 	user.Register(s)
 	book.Register(s)
+	borrow.Register(s)
 
 	// 启动服务
 	netListen, e := net.Listen("tcp", fmt.Sprint(":", env.GrpcPort))
