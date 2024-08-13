@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 func TestOut(t *testing.T) {
 	var books []*borrow.BookInfo
 	books = append(books, &borrow.BookInfo{Code: "SN1", Count: 1})
-	result, e := gc.OutIn(mc, &borrow.OutInRequest{
+	result, e := gc.OutIn(mc, &borrow.OutInInfo{
 		Type:     "借出",
 		Username: "测试",
 		Books:    books,
@@ -48,7 +48,7 @@ func TestOut(t *testing.T) {
 func TestIn(t *testing.T) {
 	var books []*borrow.BookInfo
 	books = append(books, &borrow.BookInfo{Code: "SN1", Count: 2})
-	result, e := gc.OutIn(mc, &borrow.OutInRequest{
+	result, e := gc.OutIn(mc, &borrow.OutInInfo{
 		Type:     "归还",
 		Username: "测试",
 		Books:    books,

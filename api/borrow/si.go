@@ -32,20 +32,14 @@ func Register(s grpc.ServiceRegistrar) {
 	sdb = toolSql.GetDb()
 }
 
-func (s *server) OutIn(ctx context.Context, in *borrow.OutInRequest) (*borrow.Empty, error) {
+func (s *server) OutIn(ctx context.Context, in *borrow.OutInInfo) (*borrow.Empty, error) {
 	// 基本检查
 	if tool.ArrayIndex(in.GetType(), []string{"借出", "归还"}) == -1 {
 		return nil, status.Errorf(codes.InvalidArgument, "类型无效")
 	}
-	if in.GetUsername() == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "需要用户名")
-	}
 	if len(in.GetBooks()) == 0 {
 		return nil, status.Errorf(codes.InvalidArgument, "需要图书信息")
 	}
-
-	// 获取上下文
-	managerId := ctx.Value(toolApi.ContextKeyUserId).(string)
 
 	// 准备事务
 	t, e := sdb.BeginTx(ctx, pgx.TxOptions{})
@@ -88,7 +82,7 @@ func (s *server) OutIn(ctx context.Context, in *borrow.OutInRequest) (*borrow.Em
 	// 保存入库
 	in.Id = uuid.New().String()
 	in.DateText = time.Now().Format("2006-01-02T15:04:05")
-	in.Manager = managerId
+	in.Username = ctx.Value(toolApi.ContextKeyUserId).(string)
 	inText, _ := toolApi.ProtoToJson(in)
 	tag, error := t.Exec(context.Background(), fmt.Sprintf(`insert into %s values('%s');`, toolSql.TableNameBorrow, inText))
 	if error != nil {
