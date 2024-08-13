@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+option go_package = "gs/proto/borrow";
+option java_package = "io.grpc.borrow";
+option java_outer_classname = "BorrowProto";
+
+package borrow;
+
+// 借还
+service Borrow {
+  // 借出归还
+  rpc OutIn(OutInRequest) returns (Empty) {}
+
+  // 查询
+  rpc Search (SearchRequest) returns (SearchResponse) {}
+}
+
+message Empty {}
+
+// 图书信息
+message BookInfo {
+  string code = 1; // 编码
+  int32 count = 2; // 数量
+}
+
+message OutInRequest {
+  string id = 1; // 由服务生成
+  string date_text = 2; // 由服务生成, 日期时间, 格式 2024-08-13T14:01:02
+  string type = 3; // 类型: [借出,归还]
+  string manager = 4; // 管理员
+  string username = 5; // 用户名
+  repeated BookInfo books = 6; // 图书信息
+}
+
+message SearchRequest {
+  string username = 1; // 用户名
+}
+
+message SearchResponse {
+  repeated BookInfo books = 1; // 图书信息(数量为在借数,图书信息为0表示没有在借)
+}

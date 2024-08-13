@@ -17,8 +17,6 @@ const (
 	TableNameUser = "om_user"
 	// 图书
 	TableNameBook = "om_book"
-	// 借还
-	TableNameBorrow = "om_borrow"
 )
 
 var dbPool *pgxpool.Pool
@@ -34,9 +32,6 @@ insert into %s values('{"state":"正常","username":"测试"}') ON CONFLICT ((j-
 -- 图书
 create table if not exists %s (j jsonb);
 create unique index if not exists iu_%s_code on %s ((j->'code'));
--- 借还
-create table if not exists %s (j jsonb);
-create unique index if not exists iu_%s_id on %s ((j->'id'));
 `,
 		// 用户
 		TableNameUser,
@@ -45,9 +40,6 @@ create unique index if not exists iu_%s_id on %s ((j->'id'));
 		// 图书
 		TableNameBook,
 		TableNameBook, TableNameBook,
-		// 用户
-		TableNameBorrow,
-		TableNameBorrow, TableNameBorrow,
 	))
 
 	if e != nil {

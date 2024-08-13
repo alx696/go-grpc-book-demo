@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+option go_package = "gs/proto/book";
+option java_package = "io.grpc.book";
+option java_outer_classname = "BookProto";
+
+package book;
+
+// 图书
+service Book {
+  // 增加
+  rpc Add(Info) returns (Empty) {}
+
+  // 改删
+  rpc Change(Info) returns (Empty) {}
+
+  // 查询
+  rpc Search (SearchRequest) returns (SearchResponse) {}
+}
+
+message Empty {}
+
+message Info {
+  string code = 1; // 图书编码:唯一
+  string name = 2; // 名称
+  int32 total_count = 3; // 库存数量
+  int32 borrow_count = 4; // 借出数量
+  string state = 5; // 状态: [正常,删除]
+}
+
+message SearchRequest {
+  int32 page_start = 1; // 必须:该页开始行数, 从1开始, 必须大于等于1
+  int32 page_count = 2; // 必须:该页数量, 必须大于等于1
+  string keyword = 3; // 图书编码, 名称
+}
+
+message SearchResponse {
+  int32 count = 1;
+  repeated Info info_array = 2;
+}
