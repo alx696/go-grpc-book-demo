@@ -68,10 +68,6 @@ func (s *server) Change(ctx context.Context, in *user.Info) (*user.Empty, error)
 	// 保存入库
 	ct, e := sdb.Exec(context.Background(), fmt.Sprintf(`update %s set j = jsonb_set(j, '{state}', '"%s"') where j->>'username' = '%s';`, toolSql.TableNameUser, in.GetState(), in.GetUsername()))
 	if e != nil {
-		if strings.HasPrefix(e.Error(), "ERROR: duplicate key value") {
-			return nil, status.Errorf(codes.InvalidArgument, "用户名重复")
-		}
-
 		return nil, status.Errorf(codes.Internal, e.Error())
 	}
 	if ct.RowsAffected() == 0 {
@@ -100,7 +96,7 @@ func (s *server) Search(ctx context.Context, in *user.SearchRequest) (*user.Sear
 	}
 
 	sqlCount := fmt.Sprintf(`select count(*) from %s as me where %s`, toolSql.TableNameUser, sqlWhere)
-	sqlMain := fmt.Sprintf(`select j from %s where %s order by j->>'id'`, toolSql.TableNameUser, sqlWhere)
+	sqlMain := fmt.Sprintf(`select j from %s where %s order by j->>'username'`, toolSql.TableNameUser, sqlWhere)
 	sqlPage := fmt.Sprintf(`offset %v limit %v`, in.PageStart-1, in.PageCount)
 	var sqlFull string
 	if in.PageStart > 0 {
