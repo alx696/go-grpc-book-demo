@@ -14,11 +14,13 @@ import (
 
 const (
 	// 用户
-	TableNameUser = "om_user"
+	TableNameUser = "bs_user"
 	// 图书
-	TableNameBook = "om_book"
-	// 借还
-	TableNameBorrow = "om_borrow"
+	TableNameBook = "bs_book"
+	// 借还记录
+	TableNameBorrowOutIn = "bs_borrow_outin"
+	// 用户在借
+	TableNameUserBorrow = "bs_user_borrow"
 )
 
 var dbPool *pgxpool.Pool
@@ -34,8 +36,11 @@ insert into %s values('{"state":"正常","username":"测试"}') ON CONFLICT ((j-
 -- 图书
 create table if not exists %s (j jsonb);
 create unique index if not exists iu_%s_code on %s ((j->'code'));
--- 借还
+-- 借还记录
 create table if not exists %s (j jsonb);
+-- 用户在借
+create table if not exists %s (j jsonb);
+create unique index if not exists iu_%s_username on %s ((j->'username'));
 `,
 		// 用户
 		TableNameUser,
@@ -44,8 +49,11 @@ create table if not exists %s (j jsonb);
 		// 图书
 		TableNameBook,
 		TableNameBook, TableNameBook,
-		// 借还
-		TableNameBorrow,
+		// 借还记录
+		TableNameBorrowOutIn,
+		// 用户在借
+		TableNameUserBorrow,
+		TableNameUserBorrow, TableNameUserBorrow,
 	))
 
 	if e != nil {
