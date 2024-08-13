@@ -147,7 +147,16 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 	ctx = context.WithValue(ctx, toolApi.ContextKeyUserId, userId)
 
 	// 处理
-	return handler(ctx, req)
+	resp, e := handler(ctx, req)
+	gs, gsOk := status.FromError(e)
+	if gsOk && gs.Code() == codes.OK {
+		respJsonText, _ := toolApi.ProtoToJson(resp.(proto.Message))
+		filelog.Info("接口", info.FullMethod, "客户端IP", mi.Ip, "用户id", userId, "请求内容", requestJsonText, "响应编码", gs.Code(), "响应内容", respJsonText)
+	} else {
+		filelog.Info("接口", info.FullMethod, "客户端IP", mi.Ip, "用户id", userId, "请求内容", requestJsonText, "响应编码", gs.Code(), "响应消息", gs.Message())
+	}
+
+	return resp, e
 }
 
 // 流式拦截器

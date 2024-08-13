@@ -80,8 +80,37 @@ docker run -d --restart=always \
 
 > 使用map不方便, 服务一重启用户凭证就丢失了.
 
-
 ## 运行
 
-> 注意: 需要到 proto 文件夹中生成协议代码! 使用 Visual Studio Code 开发.
+> 注意: 需要到 proto 文件夹中(README.md中有说明)生成协议代码! 使用 Visual Studio Code 开发.
+
+### 创建环境变量文件 `.env` :
+
+```
+# 系统id(开发在后面添加自己名字拼音首字母的缩写)
+BS_SERVICE_SYSTEM_ID=service_bs_dev
+
+# gRPC端口
+BS_SERVICE_GRPC_PORT=20000
+
+# postgres
+POSTGRES_URI="postgres://postgres:postgres@172.17.0.1:5432/postgres?sslmode=disable&pool_max_conns=100&pool_max_conn_lifetime=1m&pool_max_conn_idle_time=1m&application_name=service_bs"
+```
+
+### 创建测试环境变量文件 `.env-test` :
+
+```
+# 服务地址
+GRPC_TARGET=localhost:20000
+
+# 服务是否启用TLS
+GRPC_TLS=false
+
+# 用户凭证
+TOKEN=d6449e41-e039-4458-8ab4-b47516aeacb1
+```
+
+默认添加了用户名为 `测试` 的用户, 首先需要调用 `/user.User/Auth` 登录, 将返回的token设置到 `.env-test` 中的用户凭证, 然后执行其它测试用例.
+
+没有实现完全的自动化测试, 每个接口均实现了测试单例, 直接运行或调整参数后运行即可.
 
