@@ -25,6 +25,17 @@ type server struct {
 
 var sdb *pgxpool.Pool
 
+func checkInfoRequest(in *user.Info) error {
+	if in.GetUsername() == "" {
+		return status.Errorf(codes.InvalidArgument, "需要用户名")
+	}
+	if tool.ArrayIndex(in.GetState(), []string{"正常", "删除"}) == -1 {
+		return status.Errorf(codes.InvalidArgument, "状态无效")
+	}
+
+	return nil
+}
+
 // Register 注册服务, 传递公共资源
 func Register(s grpc.ServiceRegistrar) {
 	user.RegisterUserServer(s, &server{})
@@ -33,17 +44,17 @@ func Register(s grpc.ServiceRegistrar) {
 }
 
 func (s *server) Add(ctx context.Context, in *user.Info) (*user.Empty, error) {
-	if in.GetUsername() == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "需要用户名")
-	}
-	if tool.ArrayIndex(in.GetState(), []string{"正常", "删除"}) == -1 {
-		return nil, status.Errorf(codes.InvalidArgument, "状态无效")
+	// 基本校验
+	e := checkInfoRequest(in)
+	if e != nil {
+		return nil, e
 	}
 
 	// 保存入库
 	inText, _ := toolApi.ProtoToJson(in)
 	ct, e := sdb.Exec(context.Background(), fmt.Sprintf(`insert into %s values('%s');`, toolSql.TableNameUser, inText))
 	if e != nil {
+		// 用户名重复
 		if strings.HasPrefix(e.Error(), "ERROR: duplicate key value") {
 			return nil, status.Errorf(codes.InvalidArgument, "用户名重复")
 		}
@@ -58,11 +69,10 @@ func (s *server) Add(ctx context.Context, in *user.Info) (*user.Empty, error) {
 }
 
 func (s *server) Change(ctx context.Context, in *user.Info) (*user.Empty, error) {
-	if in.GetUsername() == "" {
-		return nil, status.Errorf(codes.InvalidArgument, "需要用户名")
-	}
-	if tool.ArrayIndex(in.GetState(), []string{"正常", "删除"}) == -1 {
-		return nil, status.Errorf(codes.InvalidArgument, "状态无效")
+	// 基本校验
+	e := checkInfoRequest(in)
+	if e != nil {
+		return nil, e
 	}
 
 	// 保存入库
@@ -134,10 +144,12 @@ func (s *server) Search(ctx context.Context, in *user.SearchRequest) (*user.Sear
 }
 
 func (s *server) Auth(ctx context.Context, in *user.AuthRequest) (*user.AuthResponse, error) {
-	// 校验数据
+	// 检查
 	if in.GetUsername() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "需要用户名")
 	}
+
+	// 查询
 	var jsonText string
 	e := sdb.QueryRow(ctx, fmt.Sprintf(`select j from %s where j->>'username' = '%s'`, toolSql.TableNameUser, in.GetUsername())).Scan(&jsonText)
 	if e == pgx.ErrNoRows {
